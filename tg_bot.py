@@ -1,13 +1,14 @@
 import logging
 import random
 
+import redis
 from environs import Env
 from enum import Enum
 from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import Updater, CommandHandler, MessageHandler, \
     Filters, ConversationHandler, RegexHandler
 
-from common_utils import quiz_batch, redis_db, format_answer
+from common_utils import format_answer, get_dict_with_quiz_batch
 
 
 logging.basicConfig(
@@ -89,6 +90,18 @@ def cancel(bot, update):
 def main():
     env = Env()
     env.read_env()
+    global quiz_batch
+    quiz_batch = get_dict_with_quiz_batch(
+        env.str('PATH_TO_FILE_WITH_QUIZ_QUESTIONS')
+    )
+    global redis_db
+    redis_db = redis.StrictRedis(
+        host=env.str('REDIS_HOST'),
+        port=env.int('REDIS_PORT'),
+        password=env.str('REDIS_PASSWORD'),
+        charset="utf-8",
+        decode_responses=True
+    )
     updater = Updater(env.str('TG_BOT_TOKEN'))
     dp = updater.dispatcher
 

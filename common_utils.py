@@ -1,16 +1,9 @@
-import redis
-from environs import Env
-
-
-env = Env()
-env.read_env()
-
 def format_answer(answer):
     if '.' in answer:
         return answer.split('.')[0]
     if '(' in answer:
         return answer.split('(')[0]
-    return answer
+    return answer   
 
 
 def get_dict_with_quiz_batch(path_to_file):
@@ -31,14 +24,4 @@ def get_dict_with_quiz_batch(path_to_file):
     return quiz_batch
 
 
-quiz_batch = get_dict_with_quiz_batch(
-    env.str('PATH_TO_FILE_WITH_QUIZ_QUESTIONS')
-)
 
-redis_db = redis.StrictRedis(
-    host=env.str('REDIS_HOST'),
-    port=env.int('REDIS_PORT'),
-    password=env.str('REDIS_PASSWORD'),
-    charset="utf-8",
-    decode_responses=True
-)

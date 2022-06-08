@@ -2,12 +2,13 @@ import logging
 import random
 import time
 
+import redis
 from environs import Env
 import vk_api as vk
 from vk_api.longpoll import VkLongPoll, VkEventType
 from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 
-from common_utils import quiz_batch, redis_db, format_answer
+from common_utils import format_answer, get_dict_with_quiz_batch
 
 
 logging.basicConfig(
@@ -81,8 +82,20 @@ def main():
     env.read_env()
     global keyboard
     keyboard = get_quiz_keyboard()
+    global quiz_batch
+    quiz_batch = get_dict_with_quiz_batch(
+        env.str('PATH_TO_FILE_WITH_QUIZ_QUESTIONS')
+    )
+    global redis_db
+    redis_db = redis.StrictRedis(
+        host=env.str('REDIS_HOST'),
+        port=env.int('REDIS_PORT'),
+        password=env.str('REDIS_PASSWORD'),
+        charset="utf-8",
+        decode_responses=True
+    )
     logger = logging.getLogger(__name__)
-    vk_session = vk.VkApi(token=env.str('VK'))
+    vk_session = vk.VkApi(token=env.str('VK_API_TOKEN'))
     vk_api = vk_session.get_api()
     while True:
         try:
