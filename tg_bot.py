@@ -8,13 +8,9 @@ from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import Updater, CommandHandler, MessageHandler, \
     Filters, ConversationHandler, RegexHandler
 
-from common_utils import format_answer, get_dict_with_quiz_batch
+from quiz_bots_functions import format_answer, get_dict_with_quiz_batch
 
 
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.WARNING
-)
 logger = logging.getLogger(__name__)
 
 
@@ -88,6 +84,10 @@ def cancel(bot, update):
 
 
 def main():
+    logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.WARNING
+    )
     env = Env()
     env.read_env()
     global quiz_batch

@@ -8,13 +8,10 @@ import vk_api as vk
 from vk_api.longpoll import VkLongPoll, VkEventType
 from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 
-from common_utils import format_answer, get_dict_with_quiz_batch
+from quiz_bots_functions import format_answer, get_dict_with_quiz_batch
 
 
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.WARNING
-)
+logger = logging.getLogger(__name__)
 
 
 def get_quiz_keyboard():
@@ -78,6 +75,10 @@ def give_up(event, vk_api):
 
 
 def main():
+    logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.WARNING
+    )
     env = Env()
     env.read_env()
     global keyboard
@@ -94,7 +95,6 @@ def main():
         charset="utf-8",
         decode_responses=True
     )
-    logger = logging.getLogger(__name__)
     vk_session = vk.VkApi(token=env.str('VK_API_TOKEN'))
     vk_api = vk_session.get_api()
     while True:
