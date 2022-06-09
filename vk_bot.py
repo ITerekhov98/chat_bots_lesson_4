@@ -26,7 +26,7 @@ def get_quiz_keyboard():
     return keyboard
 
 
-def start(event, vk_api):
+def start(event, vk_api, keyboard):
     vk_api.messages.send(
         user_id=event.user_id,
         message='Привет! Я бот для викторин!',
@@ -35,7 +35,7 @@ def start(event, vk_api):
     )
 
 
-def handle_new_question_request(event, vk_api):
+def handle_new_question_request(event, vk_api, keyboard, quiz_batch, redis_db):
     question = random.choice(list(quiz_batch))
     redis_db.set(event.user_id, question)
     vk_api.messages.send(
@@ -46,7 +46,7 @@ def handle_new_question_request(event, vk_api):
     )
 
 
-def handle_solution_attempt(event, vk_api):
+def handle_solution_attempt(event, vk_api, keyboard, quiz_batch, redis_db):
     user_answer = event.text.lower()
     question = redis_db.get(event.user_id)
     correct_answer = format_answer(quiz_batch[question])
@@ -62,7 +62,7 @@ def handle_solution_attempt(event, vk_api):
     )
 
 
-def give_up(event, vk_api):
+def give_up(event, vk_api, keyboard, quiz_batch, redis_db):
     question = redis_db.get(event.user_id)
     correct_answer = quiz_batch[question]
     vk_api.messages.send(
@@ -81,13 +81,10 @@ def main():
     )
     env = Env()
     env.read_env()
-    global keyboard
     keyboard = get_quiz_keyboard()
-    global quiz_batch
     quiz_batch = get_dict_with_quiz_batch(
         env.str('PATH_TO_FILE_WITH_QUIZ_QUESTIONS')
     )
-    global redis_db
     redis_db = redis.StrictRedis(
         host=env.str('REDIS_HOST'),
         port=env.int('REDIS_PORT'),
@@ -103,13 +100,35 @@ def main():
             for event in longpoll.listen():
                 if event.type == VkEventType.MESSAGE_NEW and event.to_me:
                     if event.text == 'старт' or event.text == 'Старт':
-                        start(event, vk_api)
+                        start(
+                            event,
+                            vk_api,
+                            keyboard=keyboard,
+                        )
                     elif event.text == 'Новый вопрос':
-                        handle_new_question_request(event, vk_api)
+                        handle_new_question_request(
+                            event,
+                            vk_api,
+                            keyboard=keyboard,
+                            quiz_batch=quiz_batch,
+                            redis_db=redis_db
+                        )
                     elif event.text == 'Сдаться':
-                        give_up(event, vk_api)
+                        give_up(
+                            event,
+                            vk_api,
+                            keyboard=keyboard,
+                            quiz_batch=quiz_batch,
+                            redis_db=redis_db
+                        )                        
                     else:
-                        handle_solution_attempt(event, vk_api)
+                        handle_solution_attempt(
+                            event,
+                            vk_api,
+                            keyboard=keyboard,
+                            quiz_batch=quiz_batch,
+                            redis_db=redis_db
+                        )                        
         except Exception as error:
             logger.exception(error)
             time.sleep(60)

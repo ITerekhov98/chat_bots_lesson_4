@@ -1,5 +1,6 @@
 import logging
 import random
+from functools import partial
 
 import redis
 from environs import Env
@@ -38,7 +39,7 @@ def error(bot, update, error):
     logger.warning('Update "%s" caused error "%s"', update, error)
 
 
-def handle_new_question_request(bot, update):
+def handle_new_question_request(bot, update, quiz_batch, redis_db):
     question = random.choice(list(quiz_batch))
     redis_db.set(update.message.from_user.id, question)
     update.message.reply_text(text=question)
@@ -46,7 +47,7 @@ def handle_new_question_request(bot, update):
     return BotStates.ATTEMPT
 
 
-def handle_solution_attempt(bot, update):
+def handle_solution_attempt(bot, update, quiz_batch, redis_db):
     user_answer = update.message.text
     question = redis_db.get(update.message.from_user.id)
     correct_answer = format_answer(quiz_batch[question])
@@ -62,14 +63,14 @@ def handle_solution_attempt(bot, update):
     return BotStates.QUESTION
 
 
-def give_up(bot, update):
+def give_up(bot, update, quiz_batch, redis_db):
     question = redis_db.get(update.message.from_user.id)
     correct_answer = quiz_batch[question]
     update.message.reply_text(
         text=f'Правильный ответ: {correct_answer}'
     )
 
-    return handle_new_question_request(bot, update)
+    return handle_new_question_request(bot, update, quiz_batch, redis_db)
 
 
 def cancel(bot, update):
@@ -90,11 +91,9 @@ def main():
     )
     env = Env()
     env.read_env()
-    global quiz_batch
     quiz_batch = get_dict_with_quiz_batch(
         env.str('PATH_TO_FILE_WITH_QUIZ_QUESTIONS')
     )
-    global redis_db
     redis_db = redis.StrictRedis(
         host=env.str('REDIS_HOST'),
         port=env.int('REDIS_PORT'),
@@ -109,13 +108,40 @@ def main():
         entry_points=[CommandHandler('start', start)],
         states={
             BotStates.ATTEMPT: [
-                MessageHandler(Filters.text, handle_solution_attempt)
+                MessageHandler(
+                    Filters.text,
+                    partial(
+                        handle_solution_attempt,
+                        quiz_batch=quiz_batch,
+                        redis_db=redis_db
+                    )
+                )
             ],
-
             BotStates.QUESTION: [
-                RegexHandler('^(Новый вопрос)$', handle_new_question_request),
-                RegexHandler('^(Сдаться)$', give_up),
-                MessageHandler(Filters.text, handle_solution_attempt)
+                RegexHandler(
+                    '^(Новый вопрос)$',
+                    partial(
+                        handle_new_question_request,
+                        quiz_batch=quiz_batch,
+                        redis_db=redis_db
+                    )
+                ),
+                RegexHandler(
+                    '^(Сдаться)$',
+                    partial(
+                        give_up, 
+                        quiz_batch=quiz_batch,
+                        redis_db=redis_db
+                    )
+                ),
+                MessageHandler(
+                    Filters.text,
+                    partial(
+                        handle_solution_attempt,
+                        quiz_batch=quiz_batch,
+                        redis_db=redis_db
+                    )
+                )
             ]
         },
         fallbacks=[CommandHandler('cancel', cancel)]
